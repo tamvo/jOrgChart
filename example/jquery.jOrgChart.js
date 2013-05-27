@@ -5,7 +5,7 @@
  * http://twitter.com/wesnolte
  *
  * Based on the work of Mark Lee
- * http://www.capricasoftware.co.uk 
+ * http://www.capricasoftware.co.uk
  *
  * Copyright (c) 2011 Wesley Nolte
  * Dual licensed under the MIT and GPL licenses.
@@ -41,16 +41,16 @@
             snapMode    : 'inner',
             stack       : 'div.node'
         });
-        
+
         $('div.node').droppable({
-            accept      : '.node',          
+            accept      : '.node',
             activeClass : 'drag-active',
             hoverClass  : 'drop-hover'
         });
-        
+
       // Drag start event handler for nodes
       $('div.node').bind("dragstart", function handleDragStart( event, ui ){
-        
+
         var sourceNode = $(this);
         sourceNode.parentsUntil('.node-container')
                    .find('*')
@@ -63,18 +63,18 @@
 
         /* reload the plugin */
         $(opts.chartElement).children().remove();
-        $this.jOrgChart(opts);      
+        $this.jOrgChart(opts);
       });
-    
+
       // Drop event handler for nodes
-      $('div.node').bind("drop", function handleDropEvent( event, ui ) {    
-	  
+      $('div.node').bind("drop", function handleDropEvent( event, ui ) {
+
         var targetID = $(this).data("tree-node");
         var targetLi = $this.find("li").filter(function() { return $(this).data("tree-node") === targetID; } );
         var targetUl = targetLi.children('ul');
-		
-        var sourceID = ui.draggable.data("tree-node");		
-        var sourceLi = $this.find("li").filter(function() { return $(this).data("tree-node") === sourceID; } );		
+
+        var sourceID = ui.draggable.data("tree-node");
+        var sourceLi = $this.find("li").filter(function() { return $(this).data("tree-node") === sourceID; } );
         var sourceUl = sourceLi.parent('ul');
 
         if (targetUl.length > 0){
@@ -83,14 +83,14 @@
   		    targetLi.append("<ul></ul>");
   		    targetLi.children('ul').append(sourceLi);
         }
-        
+
         //Removes any empty lists
         if (sourceUl.children().length === 0){
           sourceUl.remove();
         }
-		
+
       }); // handleDropEvent
-        
+
     } // Drag and drop
   };
 
@@ -101,19 +101,28 @@
     chartClass : "jOrgChart",
     dragAndDrop: false
   };
-	
+
   var nodeCount = 0;
   // Method that recursively builds the tree
   function buildNode($node, $appendTo, level, opts) {
-    var $table = $("<table cellpadding='0' cellspacing='0' border='0'/>");
+    var currentNodeId = parseInt($node.attr("class"));
+
+    var $table = $("<table class='table_branch' cellpadding='0' cellspacing='0' border='0' node_id='" + currentNodeId + "'/>");
     var $tbody = $("<tbody/>");
+
+    if (currentNodeId != 0) {
+      var maxChildNodeId = parseInt($appendTo.attr("max_child_node_id"));
+      if (maxChildNodeId - currentNodeId > 0) {
+        $table.css("margin-top", (maxChildNodeId - currentNodeId)*(-70) + "px");
+      }
+    }
 
     // Construct the node container(s)
     var $nodeRow = $("<tr/>").addClass("node-cells");
     var $nodeCell = $("<td/>").addClass("node-cell").attr("colspan", 2);
     var $childNodes = $node.children("ul:first").children("li");
     var $nodeDiv;
-    
+
     if($childNodes.length > 1) {
       $nodeCell.attr("colspan", $childNodes.length * 2);
     }
@@ -124,7 +133,7 @@
                             .remove()
                             .end()
                             .html();
-	
+
       //Increaments the node count which is used to link the source list and the org chart
   	nodeCount++;
   	$node.data("tree-node", nodeCount);
@@ -155,7 +164,7 @@
           }
         });
     }
-    
+
     $nodeCell.append($nodeDiv);
     $nodeRow.append($nodeCell);
     $tbody.append($nodeRow);
@@ -163,14 +172,16 @@
     if($childNodes.length > 0) {
       // if it can be expanded then change the cursor
       $nodeDiv.css('cursor','n-resize');
-    
+
+      var maxChildNodeId = 0;
+
       // recurse until leaves found (-1) or to the level specified
-      if(opts.depth == -1 || (level+1 < opts.depth)) { 
+      if(opts.depth == -1 || (level+1 < opts.depth)) {
         var $downLineRow = $("<tr/>");
         var $downLineCell = $("<td/>").attr("colspan", $childNodes.length*2);
         $downLineRow.append($downLineCell);
-        
-        // draw the connecting line from the parent node to the horizontal line 
+
+        // draw the connecting line from the parent node to the horizontal line
         $downLine = $("<div></div>").addClass("line down");
         $downLineCell.append($downLine);
         $tbody.append($downLineRow);
@@ -178,22 +189,30 @@
         // Draw the horizontal lines
         var $linesRow = $("<tr/>");
         $childNodes.each(function() {
-          var $left = $("<td>&nbsp;</td>").addClass("line left top");
-          var $right = $("<td>&nbsp;</td>").addClass("line right top");
+          var $left = $("<td><div class='inner_line'/></td>").addClass("line left top");
+          var $right = $("<td><div class='inner_line'/></td>").addClass("line right top");
           $linesRow.append($left).append($right);
+
+          var nodeId = parseInt($(this).attr("class"));
+          if (nodeId > maxChildNodeId)
+            maxChildNodeId = nodeId;
         });
+        if ((maxChildNodeId - currentNodeId - 1) > 0)
+          $linesRow.css("height", (maxChildNodeId - currentNodeId - 1)*80 + "px");
+        else
+          $linesRow.css("height", 0);
 
         // horizontal line shouldn't extend beyond the first and last child branches
         $linesRow.find("td:first")
-                    .removeClass("top")
-                 .end()
-                 .find("td:last")
-                    .removeClass("top");
+          .removeClass("top")
+          .end()
+          .find("td:last")
+          .removeClass("top");
 
         $tbody.append($linesRow);
         var $childNodesRow = $("<tr/>");
         $childNodes.each(function() {
-           var $td = $("<td class='node-container'/>");
+           var $td = $("<td class='node-container' parent_node_id='" + currentNodeId + "' max_child_node_id='" + maxChildNodeId + "' />");
            $td.attr("colspan", 2);
            // recurse through children lists and items
            buildNode($(this), $td, level+1, opts);
@@ -223,7 +242,7 @@
 
     $table.append($tbody);
     $appendTo.append($table);
-    
+
     /* Prevent trees collapsing if a link inside a node is clicked */
     $nodeDiv.children('a').click(function(e){
         console.log(e);
